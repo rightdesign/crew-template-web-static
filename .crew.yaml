@@ -1,0 +1,41 @@
+# The crew's contract for this repository — see docs/REPO_SPEC.md in the crew
+# repository. Written so a first ticket can choose a framework and ship it
+# without editing this file: the hooks call npm scripts, so swapping the
+# build tool means changing package.json, never this.
+version: 1
+
+platform: linux
+
+hooks:
+  # Offline-safe once a lockfile exists; `npm install` creates it the first time.
+  setup: npm install
+  test: npm test
+  build: npm run build
+  # What Pages serves right now: the commit the last deploy built, which
+  # scripts/build.mjs writes to version.txt (keep that step if the build
+  # tool changes). The Pages URL comes from the repository, not this file.
+  released: |
+    url="$(gh api repos/{owner}/{repo}/pages --jq .html_url)" && curl -fsS "${url%/}/version.txt"
+
+release:
+  # The release phase pushes main; deploy.yml publishes it to Pages.
+  mode: ci_auto
+  ci: { provider: github, ref: deploy.yml }
+  versioning: auto
+  versionFiles: [package.json]
+  changelog: CHANGELOG.md
+  verify:
+    match: commit
+    timeoutSeconds: 600
+
+# What a sandboxed run needs baked into its image: Node at the version
+# .nvmrc pins. No dependencies are warmed because the template has none.
+sandbox:
+  setup:
+    - |
+      set -e
+      arch="$(uname -m)"; case "$arch" in aarch64|arm64) arch=arm64;; x86_64) arch=x64;; esac
+      curl -fsSL "https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-${arch}.tar.gz" | tar -xz -C /opt/crew
+      mv "/opt/crew/node-v24.19.0-linux-${arch}" /opt/crew/node
+      for b in node npm npx corepack; do ln -sf "/opt/crew/node/bin/$b" "/opt/crew/bin/$b"; done
+    - node --version && npm --version
