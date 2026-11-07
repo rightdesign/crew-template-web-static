@@ -22,6 +22,31 @@ A static site that builds to `dist/` and deploys to GitHub Pages on every push t
 - **Add a dependency** with `npm install <package>` and commit `package.json` and `package-lock.json`.
 - **Write tests** as `*.test.mjs` files in `test/`, or switch `npm test` to the framework's runner.
 
+## What the platform changes when it generates your repository
+
+This template's own `.crew.yaml` releases by merge and tag, because the template is never deployed. When the platform generates a repository from it, the platform replaces the `release:` section and adds a `released` hook, so the generated repository deploys to Pages on every release:
+
+```yaml
+hooks:
+  # What Pages serves right now: the commit the last deploy built, which
+  # scripts/build.mjs writes to version.txt.
+  released: |
+    url="$(gh api repos/{owner}/{repo}/pages --jq .html_url)" && curl -fsS "${url%/}/version.txt"
+
+release:
+  # The release phase pushes main; deploy.yml publishes it to Pages.
+  mode: ci_auto
+  ci: { provider: github, ref: deploy.yml }
+  versioning: auto
+  versionFiles: [package.json]
+  changelog: CHANGELOG.md
+  verify:
+    match: commit
+    timeoutSeconds: 600
+```
+
+`deploy.yml` is skipped while the repository is a template (`github.event.repository.is_template`) and runs normally in a generated one.
+
 ## Where the app lives
 
 After the first push to `main`, the Pages URL appears in the deploy run's summary and under Settings, Pages. It is `https://<owner>.github.io/<repository name>/`.

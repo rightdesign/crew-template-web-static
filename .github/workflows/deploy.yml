@@ -16,6 +16,9 @@ concurrency:
 
 jobs:
   deploy:
+    # A push to the template repository itself runs nothing: Pages is never
+    # enabled there. A generated repository is not a template and deploys.
+    if: ${{ !github.event.repository.is_template }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

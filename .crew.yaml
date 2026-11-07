@@ -4,29 +4,25 @@
 # build tool means changing package.json, never this.
 version: 1
 
-platform: linux
+# This file describes the template repository itself, which is worked on a
+# Mac or Linux ship and releases by merge and tag; it never deploys, because
+# Pages is never enabled on a template. A repository generated from the
+# template gets a different `release:` section (ci_auto plus a Pages
+# `released` hook), written by the platform at generation; see the README,
+# "What the platform changes when it generates your repository".
+platform: unix
 
 hooks:
   # Offline-safe once a lockfile exists; `npm install` creates it the first time.
   setup: npm install
   test: npm test
   build: npm run build
-  # What Pages serves right now: the commit the last deploy built, which
-  # scripts/build.mjs writes to version.txt (keep that step if the build
-  # tool changes). The Pages URL comes from the repository, not this file.
-  released: |
-    url="$(gh api repos/{owner}/{repo}/pages --jq .html_url)" && curl -fsS "${url%/}/version.txt"
 
 release:
-  # The release phase pushes main; deploy.yml publishes it to Pages.
-  mode: ci_auto
-  ci: { provider: github, ref: deploy.yml }
+  mode: integrate
   versioning: auto
   versionFiles: [package.json]
   changelog: CHANGELOG.md
-  verify:
-    match: commit
-    timeoutSeconds: 600
 
 # What a sandboxed run needs baked into its image: Node at the version
 # .nvmrc pins. No dependencies are warmed because the template has none.
